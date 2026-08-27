@@ -1,31 +1,24 @@
 import json
-import urllib.request
-import urllib.parse
-import ssl
 import os
 import sys
-
+import httpx
+import uvicorn
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
-import uvicorn
 
-# 1. Konfigurasi Awal
+# ==========================================
+# 1. KONFIGURASI AWAL
+# ==========================================
 PORT = int(sys.argv[1]) if len(sys.argv) > 1 else 8000
 DATA_FILE = os.path.join(os.path.dirname(__file__), 'data', 'votes.json')
 
-# Pastikan direktori dan file data tersedia
+# Pastikan direktori dan file data votes.json tersedia
 os.makedirs(os.path.dirname(DATA_FILE), exist_ok=True)
 if not os.path.exists(DATA_FILE):
     with open(DATA_FILE, 'w') as f:
         json.dump({}, f)
-
-def get_ssl_context():
-    ctx = ssl.create_default_context()
-    ctx.check_hostname = False
-    ctx.verify_mode = ssl.CERT_NONE
-    return ctx
 
 def get_saved_votes():
     try:
@@ -41,25 +34,27 @@ def save_votes(votes):
     except Exception as e:
         print(f"Error saving votes: {e}")
 
-# 2. Inisialisasi Aplikasi FastAPI
+# ==========================================
+# 2. INISIALISASI FASTAPI & MIDDLEWARE
+# ==========================================
 app = FastAPI(title="SpeakUp Live API")
 
-# Konfigurasi CORS (Otomatis menangani header dan metode OPTIONS)
+# Konfigurasi CORS: Mengizinkan seluruh domain, metode (GET/POST/dll), dan header
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
     allow_credentials=True,
-    allow_methods=["*"], # Izinkan semua metode (GET, POST, OPTIONS, dll)
-    allow_headers=["*"], # Izinkan semua header
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
-
-# Pydantic Model untuk validasi body pada metode POST
+# Model Pydantic untuk request POST Speak Up
 class SpeakUpRequest(BaseModel):
     incidentId: str
 
-
-# 3. Routes / API Endpoints
+# ==========================================
+# 3. ROUTES / API ENDPOINTS
+# ==========================================
 
 @app.get("/api/votes")
 def get_votes():
@@ -69,28 +64,27 @@ def get_votes():
 
 
 @app.get("/api/live-bmkg")
-def get_live_bmkg():
-    """API: Live BMKG Real-time Earthquake API (AutoGempa, Gempa Terkini M5+, Gempa Dirasakan)"""
+async def get_live_bmkg():
+    """API: Live BMKG Real-time Earthquake API"""
     try:
-        ctx = get_ssl_context()
         headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
             'Accept': 'application/json, text/plain, */*'
         }
 
-        # Fetch latest real-time auto earthquake
-        req_auto = urllib.request.Request('[https://data.bmkg.go.id/DataMKG/TEWS/autogempa.json](https://data.bmkg.go.id/DataMKG/TEWS/autogempa.json)', headers=headers)
-        autogempa = None
-        with urllib.request.urlopen(req_auto, context=ctx, timeout=6) as res:
-            autogempa_data = json.loads(res.read().decode('utf-8'))
+        # Menggunakan httpx.AsyncClient agar penarikan data bersifat non-blocking
+        async with httpx.AsyncClient(verify=False, timeout=15.0) as client:
+            # 1. Fetch latest real-time auto earthquake
+            res_auto = await client.get('https://data.bmkg.go.id/DataMKG/TEWS/autogempa.json', headers=headers)
+            autogempa_data = res_auto.json()
             autogempa = autogempa_data.get('Infogempa', {}).get('gempa', None)
 
-        # Fetch list of 15 recent earthquakes M 5.0+
-        req_terkini = urllib.request.Request('[https://data.bmkg.go.id/DataMKG/TEWS/gempaterkini.json](https://data.bmkg.go.id/DataMKG/TEWS/gempaterkini.json)', headers=headers)
-        gempa_list = []
-        with urllib.request.urlopen(req_terkini, context=ctx, timeout=6) as res:
-            terkini_data = json.loads(res.read().decode('utf-8'))
+            # 2. Fetch list of 20 recent earthquakes M 5.0+
+            res_terkini = await client.get('https://data.bmkg.go.id/DataMKG/TEWS/gempaterkini.json', headers=headers)
+            terkini_data = res_terkini.json()
             raw_list = terkini_data.get('Infogempa', {}).get('gempa', [])
+            
+            gempa_list = []
             for idx, g in enumerate(raw_list[:20]):
                 try:
                     coords = g.get('Coordinates', '').split(',')
@@ -135,10 +129,10 @@ def get_live_bmkg():
                             'hotline': '196 / (021) 4246321',
                             'email': 'kontak@bmkg.go.id',
                             'whatsapp': '628119762196',
-                            'laporUrl': '[https://www.lapor.go.id](https://www.lapor.go.id)'
+                            'laporUrl': 'https://www.lapor.go.id'
                         },
                         'pov': {
-                            'image': '[https://images.unsplash.com/photo-1590283603385-17ffb3a7f29f?auto=format&fit=crop&w=1200&q=80](https://images.unsplash.com/photo-1590283603385-17ffb3a7f29f?auto=format&fit=crop&w=1200&q=80)',
+                            'image': 'https://images.unsplash.com/photo-1590283603385-17ffb3a7f29f?auto=format&fit=crop&w=1200&q=80',
                             'caption': f"Lokasi Pusat Seismik BMKG — {g.get('Wilayah')}",
                             'elevation': '0 mdpl',
                             'airSensor': 'Normal',
@@ -155,32 +149,35 @@ def get_live_bmkg():
             'gempa_list': gempa_list,
             'total': len(gempa_list)
         }
+
     except Exception as e:
+        print(f"Gagal mengambil data BMKG: {str(e)}") # Log ke terminal
         return {'status': 'fallback', 'error': str(e), 'gempa_list': []}
 
 
 @app.get("/api/live-karhutla")
-def get_live_karhutla():
-    """API: Live NASA FIRMS 24h Satellite Active Fire Detections (Direct Open Feed)"""
+async def get_live_karhutla():
+    """API: Live NASA FIRMS 24h Satellite Active Fire Detections"""
     try:
-        ctx = get_ssl_context()
-        nasa_url = '[https://firms.modaps.eosdis.nasa.gov/data/active_fire/suomi-npp-viirs-c2/csv/SUOMI_VIIRS_C2_SouthEast_Asia_24h.csv](https://firms.modaps.eosdis.nasa.gov/data/active_fire/suomi-npp-viirs-c2/csv/SUOMI_VIIRS_C2_SouthEast_Asia_24h.csv)'
-        req = urllib.request.Request(nasa_url, headers={
+        nasa_url = 'https://firms.modaps.eosdis.nasa.gov/data/active_fire/suomi-npp-viirs-c2/csv/SUOMI_VIIRS_C2_SouthEast_Asia_24h.csv'
+        headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
-        })
+        }
         
-        with urllib.request.urlopen(req, context=ctx, timeout=12) as response:
-            csv_text = response.read().decode('utf-8')
+        async with httpx.AsyncClient(verify=False, timeout=20.0) as client:
+            response = await client.get(nasa_url, headers=headers)
+            
+            csv_text = response.text
             lines = csv_text.strip().split('\n')
             hotspots = []
             
             if len(lines) > 1:
-                headers = [h.strip() for h in lines[0].split(',')]
-                lat_idx = headers.index('latitude') if 'latitude' in headers else 0
-                lng_idx = headers.index('longitude') if 'longitude' in headers else 1
-                bright_idx = headers.index('bright_ti4') if 'bright_ti4' in headers else 2
-                date_idx = headers.index('acq_date') if 'acq_date' in headers else 5
-                time_idx = headers.index('acq_time') if 'acq_time' in headers else 6
+                headers_csv = [h.strip() for h in lines[0].split(',')]
+                lat_idx = headers_csv.index('latitude') if 'latitude' in headers_csv else 0
+                lng_idx = headers_csv.index('longitude') if 'longitude' in headers_csv else 1
+                bright_idx = headers_csv.index('bright_ti4') if 'bright_ti4' in headers_csv else 2
+                date_idx = headers_csv.index('acq_date') if 'acq_date' in headers_csv else 5
+                time_idx = headers_csv.index('acq_time') if 'acq_time' in headers_csv else 6
                 
                 raw_hotspots = []
                 for line in lines[1:]:
@@ -189,6 +186,7 @@ def get_live_karhutla():
                         try:
                             lat = float(parts[lat_idx])
                             lng = float(parts[lng_idx])
+                            # Filter strictly to Indonesia coordinates
                             if -11.0 <= lat <= 6.0 and 95.0 <= lng <= 141.0:
                                 bright = float(parts[bright_idx])
                                 acq_date = parts[date_idx]
@@ -208,6 +206,7 @@ def get_live_karhutla():
                 sedang_hotspots = [h for h in raw_hotspots if 318.0 <= h['bright'] < 332.0]
                 rendah_hotspots = [h for h in raw_hotspots if h['bright'] < 318.0]
 
+                # Heavily prioritize KRITIS (100) and TINGGI (85)
                 sampled_hotspots = (
                     kritis_hotspots[:100] +
                     tinggi_hotspots[:85] +
@@ -225,22 +224,33 @@ def get_live_karhutla():
                     acq_time = h['time']
                     
                     region_label = "Indonesia"
-                    if lng < 105.0: region_label = "Sumatera"
-                    elif lng < 114.5 and lat < -5.5: region_label = "Jawa"
-                    elif lng < 118.0 and lat > -5.5: region_label = "Kalimantan"
-                    elif lng < 125.0 and lat > -6.0: region_label = "Sulawesi"
-                    elif lng < 126.0 and lat <= -6.0: region_label = "Bali / Nusa Tenggara"
-                    elif lng < 131.0: region_label = "Kepulauan Maluku"
-                    else: region_label = "Wilayah Papua"
+                    if lng < 105.0:
+                        region_label = "Sumatera"
+                    elif lng < 114.5 and lat < -5.5:
+                        region_label = "Jawa"
+                    elif lng < 118.0 and lat > -5.5:
+                        region_label = "Kalimantan"
+                    elif lng < 125.0 and lat > -6.0:
+                        region_label = "Sulawesi"
+                    elif lng < 126.0 and lat <= -6.0:
+                        region_label = "Bali / Nusa Tenggara"
+                    elif lng < 131.0:
+                        region_label = "Kepulauan Maluku"
+                    else:
+                        region_label = "Wilayah Papua"
 
                     if bright >= 355.0:
-                        sev, sev_desc = 'kritis', 'Suhu Ekstrem / Kobaran Api Aktif'
+                        sev = 'kritis'
+                        sev_desc = 'Suhu Ekstrem / Kobaran Api Aktif'
                     elif bright >= 335.0:
-                        sev, sev_desc = 'tinggi', 'Intensitas Tinggi / Gambut Membara'
+                        sev = 'tinggi'
+                        sev_desc = 'Intensitas Tinggi / Gambut Membara'
                     elif bright >= 318.0:
-                        sev, sev_desc = 'sedang', 'Intensitas Sedang / Pembakaran Lahan'
+                        sev = 'sedang'
+                        sev_desc = 'Intensitas Sedang / Pembakaran Lahan'
                     else:
-                        sev, sev_desc = 'rendah', 'Intensitas Rendah / Titik Hangat'
+                        sev = 'rendah'
+                        sev_desc = 'Intensitas Rendah / Titik Hangat'
 
                     hotspots.append({
                         'id': f"nasa-firms-live-{idx+1}",
@@ -280,10 +290,10 @@ def get_live_karhutla():
                             'hotline': '(021) 573-0144 / 0811-7600-113',
                             'email': 'sipongi@menlhk.go.id',
                             'whatsapp': '628117600113',
-                            'laporUrl': '[https://www.lapor.go.id](https://www.lapor.go.id)'
+                            'laporUrl': 'https://www.lapor.go.id'
                         },
                         'pov': {
-                            'image': '[https://images.unsplash.com/photo-1509316975850-ff9c5deb0cd9?auto=format&fit=crop&w=1200&q=80](https://images.unsplash.com/photo-1509316975850-ff9c5deb0cd9?auto=format&fit=crop&w=1200&q=80)',
+                            'image': 'https://images.unsplash.com/photo-1509316975850-ff9c5deb0cd9?auto=format&fit=crop&w=1200&q=80',
                             'caption': f"Deteksi Satelit NASA FIRMS ({lat:.4f}, {lng:.4f}) di {region_label}",
                             'elevation': '15 mdpl',
                             'airSensor': f"Thermal Anomaly: {bright:.1f} K",
@@ -298,16 +308,17 @@ def get_live_karhutla():
                 'rendered_hotspots': len(hotspots),
                 'hotspots': hotspots
             }
+
     except Exception as e:
+        print(f"Gagal mengambil data NASA: {str(e)}") # Log ke terminal
         return {'status': 'error', 'message': str(e), 'hotspots': []}
 
 
 @app.post("/api/speakup")
 def speak_up(req: SpeakUpRequest):
-    """API: Vote / Speak Up for an incident (Increments public tally)"""
+    """API: Vote / Speak Up for an incident"""
     incident_id = req.incidentId
     
-    # Validasi input otomatis dilakukan oleh Pydantic. Jika string kosong:
     if not incident_id:
         raise HTTPException(status_code=400, detail="incidentId cannot be empty")
 
@@ -324,13 +335,21 @@ def speak_up(req: SpeakUpRequest):
     }
 
 
-# 4. Melayani Static Files (HTML, JS, CSS) layaknya SimpleHTTPRequestHandler
-# CATATAN: Ini diletakkan di baris paling bawah supaya tidak menimpa API routing
+# ==========================================
+# 4. STATIS FILES ROUTING (WAJIB DI BAWAH)
+# ==========================================
+# Melayani file HTML, CSS, JS dari direktori tempat file Python ini berada
 app.mount("/", StaticFiles(directory=".", html=True), name="static")
 
 
-# 5. Entry Point Menjalankan Server
+# ==========================================
+# 5. ENTRY POINT RUNNER SERVER
+# ==========================================
 if __name__ == '__main__':
-    print(f">> SpeakUp Live FastAPI Server berjalan di port {PORT}")
-    # Parameter reload=True sangat berguna saat development (auto-restart bila file diubah)
-    uvicorn.run("server:app", host="0.0.0.0", port=PORT, reload=True)
+    print(f"\n=======================================================")
+    print(f"🚀 Server SpeakUp Live (FastAPI) berjalan di port {PORT}")
+    print(f"🌍 Buka browser di: http://localhost:{PORT}")
+    print(f"=======================================================\n")
+    
+    # Menjalankan server melalui Uvicorn
+    uvicorn.run("main:app", host="0.0.0.0", port=PORT, reload=True)
