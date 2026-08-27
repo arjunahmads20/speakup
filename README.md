@@ -16,8 +16,6 @@
 5. [Skema Standarisasi Data (`IncidentData Schema`)](#-5-skema-standarisasi-data-incidentdata-schema)
 6. [Dokumentasi API Backend (`server.py`)](#-6-dokumentasi-api-backend-serverpy)
 7. [Panduan Integrasi Google Street View API (POV 360°)](#-7-panduan-integrasi-google-street-view-api-pov-360)
-8. [Panduan Publikasi & Hosting Terbaik (Render / Railway / VPS)](#-8-panduan-publikasi--hosting-terbaik)
-9. [Daftar Kontak & WhatsApp Resmi Lembaga Pemerintah](#-9-daftar-kontak--whatsapp-resmi-lembaga-pemerintah)
 
 ---
 
