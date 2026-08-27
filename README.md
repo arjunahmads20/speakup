@@ -1,4 +1,4 @@
-# 📢 SPEAKUP INDONESIA — CIVIC GEOSPATIAL INTELLIGENCE PLATFORM (2026)
+# SPEAKUP INDONESIA — CIVIC GEOSPATIAL INTELLIGENCE PLATFORM (2026)
 
 [![Status](https://img.shields.io/badge/System-Operational_2026-00f0ff.svg)](http://localhost:8080)
 [![Data Feed](https://img.shields.io/badge/Live_Feeds-NASA_FIRMS_&_BMKG_TEWS-ef4444.svg)](http://localhost:8080)
@@ -8,7 +8,7 @@
 
 ---
 
-## 📑 DAFTAR ISI DOKUMENTASI
+## DAFTAR ISI DOKUMENTASI
 1. [Latar Belakang & Visi Platform](#-1-latar-belakang--visi-platform)
 2. [Arsitektur Sistem & Data Flow](#-2-arsitektur-sistem--data-flow)
 3. [Klasifikasi Tipe Data: Hybrid Architecture](#-3-klasifikasi-tipe-data-hybrid-architecture)
@@ -21,7 +21,7 @@
 
 ---
 
-## 🏛️ 1. LATAR BELAKANG & VISI PLATFORM
+## 1. LATAR BELAKANG & VISI PLATFORM
 
 Indonesia adalah negara kepulauan raksasa yang berada di lintasan *Ring of Fire* sekaligus menghadapi dinamika pembangunan sosial yang heterogen. Selama ini, data bencana dan ketimpangan sosial tersebar terpisah-pisah di berbagai portal kementerian, atau hanya muncul musiman di berita tanpa pemantauan spasial yang terpadu.
 
@@ -33,7 +33,7 @@ Indonesia adalah negara kepulauan raksasa yang berada di lintasan *Ring of Fire*
 
 ---
 
-## 🏗️ 2. ARSITEKTUR SISTEM & DATA FLOW
+## 2. ARSITEKTUR SISTEM & DATA FLOW
 
 ```
                                   [ SUMBER DATA RESMI EKSTERNAL ]
@@ -64,7 +64,7 @@ Indonesia adalah negara kepulauan raksasa yang berada di lintasan *Ring of Fire*
 
 ---
 
-## 📊 3. KLASIFIKASI TIPE DATA: HYBRID ARCHITECTURE
+## 3. KLASIFIKASI TIPE DATA: HYBRID ARCHITECTURE
 
 Platform menerapkan pemisahan metodologis yang tegas antara **Bencana Alam** dan **Masalah Sosial**:
 
@@ -86,7 +86,7 @@ Platform menerapkan pemisahan metodologis yang tegas antara **Bencana Alam** dan
 
 ---
 
-## 🛰️ 4. KATALOG SUMBER DATA RESMI & API INTEGRASI
+## 4. KATALOG SUMBER DATA RESMI & API INTEGRASI
 
 ### A. Bencana Alam (Live Real-Time)
 
@@ -107,9 +107,9 @@ Platform menerapkan pemisahan metodologis yang tegas antara **Bencana Alam** dan
 
 ---
 
-## 📋 5. SKEMA STANDARISASI DATA (`IncidentData Schema`)
+## 5. SKEMA STANDARISASI DATA (`IncidentData Schema`)
 
-Setiap data titik spasial diolah ke dalam struktur JSON yang seragam:
+Setiap data titik spasial diolah ke dalam struktur JSON yang seragam, contohnya sebagai berikut:
 
 ```json
 {
@@ -162,7 +162,7 @@ Setiap data titik spasial diolah ke dalam struktur JSON yang seragam:
 
 ---
 
-## ⚡ 6. DOKUMENTASI API BACKEND (`server.py`)
+## 6. DOKUMENTASI API BACKEND (`server.py`)
 
 Backend berjalan di atas Python Standard Library (`http.server` & `urllib.request`) tanpa memerlukan instalasi library berat:
 
@@ -181,7 +181,7 @@ Mengunduh CSV satelit NASA FIRMS NRT Southeast Asia, menyaring koordinat yang be
 
 ---
 
-## 📸 7. PANDUAN INTEGRASI GOOGLE STREET VIEW API (POV 360°)
+## 7. PANDUAN INTEGRASI GOOGLE STREET VIEW API (POV 360°)
 
 Platform memiliki fitur **POV Ground Inspector** di [`js/povViewer.js`](file:///c:/Users/arjunahmads20/Documents/speakup/js/povViewer.js).
 
@@ -196,56 +196,6 @@ Platform memiliki fitur **POV Ground Inspector** di [`js/povViewer.js`](file:///
    const GOOGLE_MAPS_API_KEY = "AIzaSy...";
    ```
 5. *(Opsi Tanpa API Key)*: Pengguna tetap dapat mengklik tombol **"Google Street View 360°"** di modal POV untuk membuka street view resmi secara langsung di tab baru secara gratis.
-
----
-
-## 🚀 8. PANDUAN PUBLIKASI & HOSTING TERBAIK
-
-Berikut adalah 3 opsi terbaik untuk mempublikasikan website ini ke publik:
-
-### 🌟 Opsi A: Render.com (Paling Direkomendasikan — Gratis & Praktis)
-- **Mengapa Render?** Mendukung server Python (`server.py`) dan frontend statis dalam satu web service gratis dengan SSL HTTPS otomatis.
-- **Langkah-langkah**:
-  1. Upload repositori ini ke akun GitHub Anda.
-  2. Buka [dashboard.render.com](https://dashboard.render.com) -> Klik **New Web Service**.
-  3. Pilih repositori GitHub Anda.
-  4. Isi konfigurasi:
-     - **Runtime**: `Python 3`
-     - **Build Command**: *(biarkan kosong)*
-     - **Start Command**: `python server.py $PORT`
-  5. Klik **Create Web Service**. Website langsung aktif di URL `https://speakup-indonesia.onrender.com`.
-
-### 🚆 Opsi B: Railway.app
-1. Buka [railway.app](https://railway.app) -> **New Project** -> **Deploy from GitHub**.
-2. Railway otomatis menjalankan `server.py`.
-3. Set variabel `PORT=8080` pada dashboard.
-
-### 🏢 Opsi C: Cloud VPS (DigitalOcean / Biznet Gio / IDCloudHost)
-1. Sewa VPS Ubuntu 24.04 (Datacenter Jakarta).
-2. Jalankan systemd service:
-   ```bash
-   sudo systemctl enable speakup.service
-   sudo systemctl start speakup.service
-   ```
-3. Pasang reverse proxy Nginx dan SSL Certbot Let's Encrypt.
-
----
-
-## 📞 9. DAFTAR KONTAK & WHATSAPP RESMI LEMBAGA PEMERINTAH
-
-Seluruh nomor telepon dan nomor WhatsApp pada drawer detail telah diverifikasi ke kanal layanan publik resmi:
-
-| Instansi | Bidang Tugas | Telepon Hotline | WhatsApp Resmi Pengaduan | Portal Layanan Web |
-| :--- | :--- | :--- | :--- | :--- |
-| **SP4N-LAPOR! RI** | Pusat Pengaduan Nasional | 170 | `+62 811-1022-210` | [lapor.go.id](https://www.lapor.go.id) |
-| **BMKG Pusat** | Gempa Bumi & Tsunami | 196 / (021) 4246321 | `+62 811-9762-196` | [bmkg.go.id](https://www.bmkg.go.id) |
-| **Manggala Agni / SiPongi KLHK** | Kebakaran Hutan & Lahan | (021) 5730144 | `+62 811-7600-113` | [sipongi.menlhk.go.id](https://sipongi.menlhk.go.id) |
-| **BPPTKG PVMBG ESDM** | Erupsi Gunung Merapi | (0274) 514180 | `+62 812-2718-9999` | [bpptkg.esdm.go.id](https://bpptkg.esdm.go.id) |
-| **Halo Kemenkes RI** | Stunting & Kesehatan | 1500-567 | `+62 811-1050-0567` | [kemkes.go.id](https://kemkes.go.id) |
-| **BKKBN RI** | Percepatan Penurunan Stunting | (021) 8098018 | `+62 812-1288-8880` | [bkkbn.go.id](https://bkkbn.go.id) |
-| **Kemendikbudristek RI** | Fasilitas Sekolah 3T | 177 | `+62 811-9762-196` | [kemdikbud.go.id](https://kemdikbud.go.id) |
-| **Dinas LH DKI (Bantar Gebang)** | TPST & Pengolahan Sampah | (021) 8092740 | `+62 812-8888-0113` | [lingkunganhidup.jakarta.go.id](https://lingkunganhidup.jakarta.go.id) |
-| **BBWS Pemali Juana PUPR** | Banjir Tanggul Sungai Wulan | (024) 6723212 | `+62 811-7600-113` | [sda.pu.go.id](https://sda.pu.go.id) |
 
 ---
 
