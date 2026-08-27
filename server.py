@@ -49,9 +49,10 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
     allow_credentials=True,
-    allow_methods=["GET", "POST", "OPTIONS"],
-    allow_headers=["Content-Type"],
+    allow_methods=["*"], # Izinkan semua metode (GET, POST, OPTIONS, dll)
+    allow_headers=["*"], # Izinkan semua header
 )
+
 
 # Pydantic Model untuk validasi body pada metode POST
 class SpeakUpRequest(BaseModel):
@@ -332,4 +333,4 @@ app.mount("/", StaticFiles(directory=".", html=True), name="static")
 if __name__ == '__main__':
     print(f">> SpeakUp Live FastAPI Server berjalan di port {PORT}")
     # Parameter reload=True sangat berguna saat development (auto-restart bila file diubah)
-    uvicorn.run("main:app", host="0.0.0.0", port=PORT, reload=True)
+    uvicorn.run("server:app", host="0.0.0.0", port=PORT, reload=True)
