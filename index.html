@@ -1,0 +1,766 @@
+<!DOCTYPE html>
+<html lang="id" class="dark">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SpeakUp Indonesia — Platform Pemantauan Bencana & Masalah Sosial Berbasis Suara Rakyat</title>
+  <meta name="description"
+    content="Pantau langsung masalah sosial dan bencana alam di Indonesia secara Past, Present, dan Future. Bersuara, kawal tanggung jawab pemerintah, dan dorong transparansi publik.">
+  <meta name="keywords"
+    content="SpeakUp, Bencana Alam Indonesia, Stunting, Banjir, Gempa, Karhutla, Erupsi Merapi, Fasilitas Pendidikan, Sampah, Suara Rakyat">
+  <meta name="author" content="SpeakUp Indonesia">
+
+  <!-- Open Graph Meta Tags -->
+  <meta property="og:title" content="SpeakUp Indonesia — Kawal Bencana & Masalah Sosial">
+  <meta property="og:description"
+    content="Platform geospasial interaktif pemantauan masalah sosial dan bencana di Indonesia dengan eskalasi suara rakyat dan asisten suara AI.">
+  <meta property="og:type" content="website">
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap"
+    rel="stylesheet">
+
+  <!-- Leaflet CSS & JS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+
+  <!-- Three.js for 3D Earth Globe -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+  <!-- Canvas Confetti -->
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <!-- Stylesheet -->
+  <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body class="bg-slate-950 text-slate-100 font-sans overflow-hidden select-none">
+  <!-- Top Command Center Bar -->
+  <header class="app-header">
+    <div class="header-left">
+      <div class="brand-badge">
+        <div class="brand-pulse-ring"></div>
+        <div class="brand-logo-icon">
+          <i data-lucide="megaphone"></i>
+        </div>
+      </div>
+      <div class="brand-titles">
+        <div class="brand-name">
+          <span>Speak</span><span class="brand-accent">Up</span>
+          <span class="brand-tag">INDONESIA</span>
+        </div>
+        <div class="brand-tagline">Civic Geospatial Escalation & Disaster Intelligence</div>
+      </div>
+    </div>
+
+    <!-- Live Urgent Alert Ticker -->
+    <div class="header-center">
+      <div class="alert-ticker">
+        <span class="ticker-badge"><i data-lucide="radio" class="w-3 h-3 text-red-400 animate-pulse"></i> LIVE
+          MONITORING</span>
+        <div class="ticker-content" id="alertTickerContent">
+          Memuat data satelit & laporan publik terkini...
+        </div>
+      </div>
+    </div>
+
+    <div class="header-right">
+      <!-- Quick Search -->
+      <div class="search-box">
+        <i data-lucide="search" class="search-icon"></i>
+        <input type="text" id="globalSearchInput" placeholder="Cari wilayah, bencana, instansi... (Tekan /)"
+          autocomplete="off">
+        <button id="clearSearchBtn" class="clear-search hidden"><i data-lucide="x"></i></button>
+        <div id="searchResultsDropdown" class="search-dropdown hidden"></div>
+      </div>
+
+      <!-- Audio SFX Toggle -->
+      <button id="sfxToggleBtn" class="action-btn" title="Efek Suara Radar (Aktif/Nonaktif)">
+        <i data-lucide="volume-2" id="sfxIcon"></i>
+      </button>
+
+      <!-- 3D Globe Mode Switcher -->
+      <button id="viewModeToggleBtn" class="action-btn" title="Ganti Mode Tampilan (Peta / 3D Globe View)">
+        <i data-lucide="globe"></i>
+        <span class="btn-text">Globe 3D</span>
+      </button>
+
+      <!-- Voice Assistant Trigger Button -->
+      <button id="voiceAssistantHeaderBtn" class="voice-hero-btn" title="Buka Asisten Suara SpeakUp">
+        <div class="mic-wave-ring"></div>
+        <i data-lucide="mic"></i>
+        <span>Asisten Suara</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Workspace -->
+  <main class="app-main">
+    <!-- Left Sidebar: Filters, Stats & Categories -->
+    <aside class="sidebar-left" id="sidebarLeft">
+      <div class="sidebar-header">
+        <div class="flex items-center gap-2">
+          <i data-lucide="layers" class="text-cyan-400"></i>
+          <span class="font-semibold tracking-wide uppercase text-xs text-slate-300">Katalog</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <button id="showAllCategoriesBtn" class="reset-filter-link hidden"
+            title="Tampilkan Semua Kategori">Semua</button>
+          <span class="total-points-badge" id="totalActivePointsBadge">0 Titik</span>
+          <button id="collapseLeftSidebarBtn" class="sidebar-toggle-btn" title="Kecilkan / Sembunyikan Sidebar">
+            <i data-lucide="chevron-left"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Temporal Timeline Selector -->
+      <div class="temporal-widget">
+        <div class="widget-label">
+          <div class="flex items-center gap-1.5">
+            <i data-lucide="clock" class="w-3.5 h-3.5 text-cyan-400"></i>
+            <span>Dimensi Waktu Data</span>
+          </div>
+          <span class="temporal-status-pill" id="temporalStatusPill">Present (Real-time)</span>
+        </div>
+        <div class="temporal-tabs">
+          <button class="temporal-tab" data-timeline="past">
+            <i data-lucide="history"></i>
+            <span>Past</span>
+            <small>2018-2024</small>
+          </button>
+          <button class="temporal-tab active" data-timeline="present">
+            <i data-lucide="activity" class="text-emerald-400 animate-pulse"></i>
+            <span>Present</span>
+            <small>Aktual / Live</small>
+          </button>
+          <button class="temporal-tab" data-timeline="future">
+            <i data-lucide="sparkles" class="text-purple-400"></i>
+            <span>Future</span>
+            <small>Prediksi AI</small>
+          </button>
+        </div>
+        <div class="temporal-desc" id="temporalDesc">
+          Menampilkan kejadian aktif yang diverifikasi satelit dan laporan masyarakat saat ini.
+        </div>
+      </div>
+
+      <!-- Severity Filter -->
+      <div class="filter-section">
+        <div class="widget-label">
+          <div class="flex items-center gap-1.5">
+            <i data-lucide="shield-alert" class="w-3.5 h-3.5 text-amber-400"></i>
+            <span>Level Keparahan</span>
+          </div>
+          <button id="resetSeverityFilter" class="reset-filter-link">Semua</button>
+        </div>
+        <div class="severity-chips">
+          <button class="severity-chip active" data-severity="all">
+            <span class="severity-dot all"></span> Semua
+          </button>
+          <button class="severity-chip" data-severity="kritis">
+            <span class="severity-dot kritis"></span> Kritis
+          </button>
+          <button class="severity-chip" data-severity="tinggi">
+            <span class="severity-dot tinggi"></span> Tinggi
+          </button>
+          <button class="severity-chip" data-severity="sedang">
+            <span class="severity-dot sedang"></span> Sedang
+          </button>
+          <button class="severity-chip" data-severity="rendah">
+            <span class="severity-dot rendah"></span> Rendah
+          </button>
+        </div>
+      </div>
+
+      <!-- Category Filter Accordion -->
+      <div class="categories-list-scroll" id="categoriesContainer">
+        <!-- GROUP 1: BENCANA ALAM (LIVE REAL-TIME STREAM) -->
+        <div class="category-group">
+          <div class="category-group-title">
+            <span class="pulse-live-indicator"></span>
+            <span>Bencana Alam (Live Satelit & Sensor)</span>
+            <span class="live-stream-badge">LIVE API</span>
+          </div>
+          <div class="category-items">
+            <button class="category-item-btn" data-category="karhutla">
+              <div class="cat-icon-box" style="background: rgba(239, 68, 68, 0.15); color: #ef4444;">
+                <i data-lucide="flame"></i>
+              </div>
+              <div class="cat-info">
+                <div class="cat-name">Kebakaran Hutan</div>
+                <div class="cat-sub">Satelit NASA FIRMS NRT (11.000+ Deteksi)</div>
+              </div>
+              <div class="cat-count" id="count-karhutla">150+</div>
+            </button>
+
+            <button class="category-item-btn" data-category="gempa">
+              <div class="cat-icon-box" style="background: rgba(168, 85, 247, 0.15); color: #a855f7;">
+                <i data-lucide="activity"></i>
+              </div>
+              <div class="cat-info">
+                <div class="cat-name">Gempa Bumi</div>
+                <div class="cat-sub">Sensor Seismik BMKG TEWS Real-time</div>
+              </div>
+              <div class="cat-count" id="count-gempa">15</div>
+            </button>
+
+            <button class="category-item-btn" data-category="gunung_api">
+              <div class="cat-icon-box" style="background: rgba(244, 63, 94, 0.15); color: #f43f5e;">
+                <i data-lucide="mountain"></i>
+              </div>
+              <div class="cat-info">
+                <div class="cat-name">Erupsi Gunung Api</div>
+                <div class="cat-sub">Status Level PVMBG Badan Geologi</div>
+              </div>
+              <div class="cat-count" id="count-gunung_api">6</div>
+            </button>
+
+            <button class="category-item-btn" data-category="banjir">
+              <div class="cat-icon-box" style="background: rgba(6, 182, 212, 0.15); color: #06b6d4;">
+                <i data-lucide="waves"></i>
+              </div>
+              <div class="cat-info">
+                <div class="cat-name">Banjir & Genangan</div>
+                <div class="cat-sub">Pusdatin BNPB & BBWS PUPR</div>
+              </div>
+              <div class="cat-count" id="count-banjir">2</div>
+            </button>
+          </div>
+        </div>
+
+        <!-- GROUP 2: MASALAH SOSIAL (DATA STATISTIK RESMI KEMENTERIAN) -->
+        <div class="category-group">
+          <div class="category-group-title">
+            <i data-lucide="bar-chart-2" style="width: 13px; height: 13px; color: #3b82f6;"></i>
+            <span>Masalah Sosial (Data Statistik Resmi)</span>
+            <span class="stats-badge">BPS / Kemenkes</span>
+          </div>
+          <div class="category-items">
+            <button class="category-item-btn" data-category="stunting">
+              <div class="cat-icon-box" style="background: rgba(244, 63, 94, 0.15); color: #f43f5e;">
+                <i data-lucide="baby"></i>
+              </div>
+              <div class="cat-info">
+                <div class="cat-name">Stunting & Gizi Buruk</div>
+                <div class="cat-sub">Survei Kesehatan SKI Kemenkes & BKKBN</div>
+              </div>
+              <div class="cat-count" id="count-stunting">5</div>
+            </button>
+
+            <button class="category-item-btn" data-category="pendidikan">
+              <div class="cat-icon-box" style="background: rgba(59, 130, 246, 0.15); color: #3b82f6;">
+                <i data-lucide="graduation-cap"></i>
+              </div>
+              <div class="cat-info">
+                <div class="cat-name">Fasilitas Pendidikan</div>
+                <div class="cat-sub">Dapodik Kemendikbud & BPS Daerah 3T</div>
+              </div>
+              <div class="cat-count" id="count-pendidikan">2</div>
+            </button>
+
+            <button class="category-item-btn" data-category="sampah">
+              <div class="cat-icon-box" style="background: rgba(245, 158, 11, 0.15); color: #f59e0b;">
+                <i data-lucide="trash-2"></i>
+              </div>
+              <div class="cat-info">
+                <div class="cat-name">Penumpukan Sampah</div>
+                <div class="cat-sub">SIPSN KLHK & Dinas LH Provinsi</div>
+              </div>
+              <div class="cat-count" id="count-sampah">2</div>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Escalation Leaderboard Mini -->
+      <div class="sidebar-footer-stats">
+        <div class="footer-stat-title">
+          <i data-lucide="trending-up" class="w-3.5 h-3.5 text-red-400"></i>
+          <span>Titik Paling Banyak di-SpeakUp</span>
+        </div>
+        <div id="topEscalatedList" class="top-escalated-list"></div>
+      </div>
+    </aside>
+
+    <!-- Map & 3D Globe Stage Container -->
+    <section class="map-stage">
+      <div id="mapContainer" class="map-canvas"></div>
+
+      <!-- 3D Canvas Globe Overlay (Toggleable) -->
+      <div id="globe3DContainer" class="globe-3d-canvas hidden">
+        <canvas id="threeGlobeCanvas"></canvas>
+        <div class="globe-overlay-hud">
+          <div class="globe-title">3D DIGITAL EARTH INTERACTIVE PROJECTION</div>
+          <div class="globe-hint"><i data-lucide="mouse-pointer-click" class="w-3.5 h-3.5"></i> Klik dan seret untuk
+            rotasi 360° | Klik titik untuk inspeksi</div>
+        </div>
+      </div>
+
+      <!-- Floating Sidebar Toggle Buttons on Map -->
+      <button id="expandLeftSidebarBtn" class="map-floating-panel-toggle left hidden"
+        title="Buka Panel Katalog Kategori">
+        <i data-lucide="chevron-right"></i>
+        <span>Katalog</span>
+      </button>
+
+      <button id="expandRightDrawerBtn" class="map-floating-panel-toggle right hidden" title="Buka Panel Detail Titik">
+        <span>Detail Titik</span>
+        <i data-lucide="chevron-left"></i>
+      </button>
+
+      <!-- Map Floating HUD Controls -->
+      <div class="map-hud-controls">
+        <button id="recenterIndonesiaBtn" class="hud-btn" title="Pusatkan ke Seluruh Indonesia">
+          <i data-lucide="navigation"></i>
+          <span class="tooltip">Reset Posisi Nusantara</span>
+        </button>
+        <button id="toggleHeatmapBtn" class="hud-btn" title="Toggle Radius Bahaya / Densitas">
+          <i data-lucide="radar"></i>
+          <span class="tooltip">Radius Bahaya</span>
+        </button>
+        <button id="locateMeBtn" class="hud-btn" title="Cari Bencana di Sekitar Saya">
+          <i data-lucide="crosshair"></i>
+          <span class="tooltip">Lokasi Saya</span>
+        </button>
+      </div>
+
+      <!-- Map Legend Indicator -->
+      <div class="map-legend">
+        <div class="legend-header">
+          <i data-lucide="shield-alert" class="w-3.5 h-3.5 text-rose-400"></i>
+          <span>Indikator Tingkat Keparahan</span>
+        </div>
+        <div class="legend-items">
+          <div class="legend-item">
+            <span class="legend-dot" style="background: #ef4444; box-shadow: 0 0 8px #ef4444;"></span>
+            <span class="legend-label"><strong style="color: #ef4444;">Kritis</strong> (Darurat / Evakuasi)</span>
+          </div>
+          <div class="legend-item">
+            <span class="legend-dot" style="background: #f97316; box-shadow: 0 0 8px #f97316;"></span>
+            <span class="legend-label"><strong style="color: #f97316;">Tinggi</strong> (Siaga / Kerusakan Berat)</span>
+          </div>
+          <div class="legend-item">
+            <span class="legend-dot" style="background: #eab308; box-shadow: 0 0 8px #eab308;"></span>
+            <span class="legend-label"><strong style="color: #eab308;">Sedang</strong> (Waspada / Rutin)</span>
+          </div>
+          <div class="legend-item">
+            <span class="legend-dot" style="background: #10b981; box-shadow: 0 0 8px #10b981;"></span>
+            <span class="legend-label"><strong style="color: #10b981;">Rendah</strong> (Terkendali / Stabil)</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Right Drawer: Point Inspector & Civic Action Panel -->
+    <aside class="sidebar-right custom-scrollbar" id="inspectorDrawer">
+      <!-- Empty Placeholder when no point selected -->
+      <div class="drawer-empty-state" id="drawerEmptyState">
+        <div class="empty-icon-pulse">
+          <i data-lucide="map-pin"></i>
+        </div>
+        <h3>Pilih Titik di Peta atau Gunakan Asisten Suara</h3>
+        <p>Klik salah satu titik hotspot di peta Indonesia atau sebutkan nama bencana / lokasi ke Asisten Suara untuk
+          meninjau:</p>
+        <ul class="empty-feature-list">
+          <li><i data-lucide="check" class="text-cyan-400"></i> Metrik mendalam (Past, Present, Future)</li>
+          <li><i data-lucide="check" class="text-cyan-400"></i> Point of View (POV Street View 360°)</li>
+          <li><i data-lucide="check" class="text-cyan-400"></i> Kontak lembaga pemerintah terdekat</li>
+          <li><i data-lucide="check" class="text-cyan-400"></i> Fitur <strong>Speak Up</strong> untuk eskalasi sosial
+            media</li>
+        </ul>
+      </div>
+
+      <!-- Populated Incident Content -->
+      <div class="drawer-content hidden" id="drawerContent">
+        <!-- Header & Close -->
+        <div class="drawer-header">
+          <div class="flex items-center gap-2">
+            <span class="incident-badge" id="drawerCategoryBadge">Kategori</span>
+            <span class="severity-badge" id="drawerSeverityBadge">Kritis</span>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <button id="collapseRightDrawerBtn" class="sidebar-toggle-btn"
+              title="Kecilkan / Sembunyikan Panel Detail"><i data-lucide="chevron-right"></i></button>
+            <button id="closeDrawerBtn" class="close-drawer-btn" title="Tutup"><i data-lucide="x"></i></button>
+          </div>
+        </div>
+
+        <!-- Incident Title & Province -->
+        <div class="incident-title-section">
+          <h2 id="drawerTitle">Judul Bencana / Masalah</h2>
+          <div class="incident-location">
+            <i data-lucide="map-pin" class="w-4 h-4 text-rose-400"></i>
+            <span id="drawerLocation">Lokasi, Kabupaten, Provinsi</span>
+          </div>
+          <div class="incident-data-date-row" id="drawerDataDateRow">
+            <i data-lucide="calendar" class="w-3.5 h-3.5 text-cyan-400"></i>
+            <span id="drawerDataDate" class="data-date-text">Tanggal Data: 26 Agustus 2026</span>
+          </div>
+          <div class="incident-coordinates" id="drawerCoordinates">Lat: -7.5407, Lng: 110.4457</div>
+        </div>
+
+        <!-- Metric & Timeline Highlight Cards -->
+        <div class="metric-highlight-grid" id="drawerMetricsGrid">
+          <!-- Dynamically populated -->
+        </div>
+
+        <!-- Temporal Forecast & Insight Box -->
+        <div class="temporal-insight-card" id="drawerTemporalCard">
+          <div class="insight-header">
+            <i data-lucide="sparkles" class="text-purple-400"></i>
+            <span id="drawerTemporalHeading">Analisis Temporal</span>
+          </div>
+          <p id="drawerTemporalText">Deskripsi data historis atau proyeksi masa depan...</p>
+        </div>
+
+        <!-- Popularitas & Speak Up Hero Action -->
+        <div class="speakup-hero-box">
+          <div class="popularity-bar">
+            <div class="popularity-info">
+              <span class="pop-label"><i data-lucide="flame" class="text-amber-400"></i> Popularitas Suara Rakyat</span>
+              <span class="pop-count" id="drawerSpeakupCount">1,420 Suara</span>
+            </div>
+            <div class="pop-meter">
+              <div class="pop-meter-fill" id="drawerSpeakupMeterFill" style="width: 75%;"></div>
+            </div>
+            <div class="pop-subtext" id="drawerUrgencyText">Tingkat urgensi tinggi! Dibutuhkan 500 suara lagi untuk
+              eskalasi nasional.</div>
+          </div>
+
+          <button id="triggerSpeakUpBtn" class="speakup-cta-btn">
+            <div class="btn-glow-pulse"></div>
+            <i data-lucide="megaphone" class="w-5 h-5"></i>
+            <span>SPEAK UP SEKARANG! (Eskalasi Suara)</span>
+          </button>
+        </div>
+
+        <!-- Action Buttons: POV View & Flight to Govt -->
+        <div class="action-grid-buttons">
+          <button id="openPovModalBtn" class="action-grid-btn pov-btn">
+            <i data-lucide="eye"></i>
+            <div>
+              <strong>Point of View (POV)</strong>
+              <small>Lihat kondisi nyata lapangan 360°</small>
+            </div>
+          </button>
+          <button id="focusGovtAgencyBtn" class="action-grid-btn govt-btn">
+            <i data-lucide="building-2"></i>
+            <div>
+              <strong>Lembaga Terdekat</strong>
+              <small>Lacak kantor & jarak penanggung jawab</small>
+            </div>
+          </button>
+        </div>
+
+        <!-- Rekomendasi Aksi (Action Recommendations) -->
+        <div class="action-recommendations-card">
+          <div class="card-section-title">
+            <i data-lucide="list-checks" class="text-emerald-400"></i>
+            <span>Rekomendasi Aksi untuk Warga & Relawan</span>
+          </div>
+          <div class="action-steps-list" id="drawerActionSteps">
+            <!-- Dynamic steps -->
+          </div>
+        </div>
+
+        <!-- Lembaga Pemerintah Penanggung Jawab -->
+        <div class="govt-agency-card" id="drawerGovtAgencyCard">
+          <div class="card-section-title">
+            <i data-lucide="landmark" class="text-cyan-400"></i>
+            <span>Instansi Pemerintah Penanggung Jawab</span>
+          </div>
+
+          <div class="govt-info-box">
+            <div class="govt-name-row">
+              <h4 id="govtName">Badan Penanggulangan Bencana Daerah (BPBD)</h4>
+              <span class="govt-distance-tag" id="govtDistance">3.2 km dari lokasi</span>
+            </div>
+
+            <div class="govt-details-list">
+              <div class="detail-item">
+                <i data-lucide="map-pin"></i>
+                <span id="govtAddress">Jl. Raya Magelang - Sleman KM 14</span>
+              </div>
+              <div class="detail-item">
+                <i data-lucide="compass"></i>
+                <span id="govtCoords">Koordinat: -7.5621, 110.4201</span>
+              </div>
+              <div class="detail-item">
+                <i data-lucide="phone-call" class="text-emerald-400"></i>
+                <span id="govtHotline">Hotline: (0274) 868-945</span>
+              </div>
+              <div class="detail-item">
+                <i data-lucide="mail"></i>
+                <span id="govtEmail">bpbd@magelangkab.go.id</span>
+              </div>
+            </div>
+
+            <div class="govt-action-row">
+              <a id="govtCallLink" href="tel:" class="govt-action-btn call-btn">
+                <i data-lucide="phone"></i> Hubungi Langsung
+              </a>
+              <a id="govtWaLink" href="https://wa.me/" target="_blank" class="govt-action-btn wa-btn">
+                <i data-lucide="message-square"></i> WhatsApp Pengaduan
+              </a>
+              <a id="govtLaporLink" href="https://www.lapor.go.id" target="_blank" class="govt-action-btn lapor-btn"
+                title="Kirim Laporan Resmi ke SP4N-LAPOR!">
+                <i data-lucide="send"></i> SP4N-LAPOR!
+              </a>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </aside>
+  </main>
+
+  <!-- Point of View (POV / Street View 360) Modal -->
+  <div id="povModal" class="modal-overlay hidden">
+    <div class="pov-modal-box">
+      <div class="pov-modal-header">
+        <div class="flex items-center gap-2">
+          <i data-lucide="compass" class="text-cyan-400 animate-spin"></i>
+          <div>
+            <h3 id="povModalTitle" class="font-bold text-lg">Point of View (POV Ground Inspector)</h3>
+            <span id="povModalSubtitle" class="text-xs text-slate-400">Ground telemetry and street perspective</span>
+          </div>
+        </div>
+        <button id="closePovModalBtn" class="modal-close-btn"><i data-lucide="x"></i></button>
+      </div>
+
+      <div class="pov-viewport-container" id="povViewport">
+        <!-- Interactive Panorama / Visual Field Area -->
+        <div class="pov-visual-canvas" id="povCanvas">
+          <img id="povImage" src="" alt="Street POV View" class="pov-bg-image">
+
+          <!-- Augmented Reality HUD Overlays on top of the image -->
+          <div class="ar-hud-target" style="top: 45%; left: 52%;">
+            <div class="ar-pin-pulse"></div>
+            <div class="ar-pin-tag" id="arPinLabel">Pusat Titik Insiden</div>
+          </div>
+
+          <div class="ar-hud-target" style="top: 25%; left: 80%;">
+            <div class="ar-agency-pin"></div>
+            <div class="ar-agency-tag" id="arAgencyPinLabel">Arah Kantor Instansi Terdekat (3.2 km)</div>
+          </div>
+
+          <!-- Compass & Orientation Wheel -->
+          <div class="pov-compass-overlay">
+            <div class="compass-dial">
+              <span class="c-n">N</span><span class="c-e">E</span><span class="c-s">S</span><span class="c-w">W</span>
+              <div class="compass-needle" id="compassNeedle"></div>
+            </div>
+            <span class="compass-bearing" id="compassBearing">Heading 342° NW</span>
+          </div>
+
+          <!-- Environmental Sensor Telemetry HUD -->
+          <div class="pov-telemetry-hud" id="povTelemetryHud">
+            <div class="telemetry-item">
+              <span class="t-label">STATUS RADIUS</span>
+              <span class="t-val text-red-400" id="povRadiusStatus">ZONA KRB III (KRITIS)</span>
+            </div>
+            <div class="telemetry-item">
+              <span class="t-label">KETINGGIAN / ELEVASI</span>
+              <span class="t-val" id="povElevation">1.420 mdpl</span>
+            </div>
+            <div class="telemetry-item">
+              <span class="t-label">SENSOR UDARA / ISPU</span>
+              <span class="t-val" id="povSensorAqi">AQI 185 (Sangat Tidak Sehat)</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- POV Controls -->
+        <div class="pov-controls-bar">
+          <div class="pov-hint">
+            <i data-lucide="move" class="w-4 h-4 text-cyan-400"></i>
+            <span>Gunakan kursor untuk rotasi 360° telemetri visual</span>
+          </div>
+          <div class="pov-view-mode-buttons">
+            <a id="povOpenGoogleMapsBtn" href="#" target="_blank" class="pov-gmaps-link-btn"
+              title="Buka Titik di Google Street View Web">
+              <i data-lucide="external-link"></i> <span>Google Street View 360°</span>
+            </a>
+            <button id="povToggleStreetViewBtn" class="pov-mode-btn" title="Aktifkan Mode Google Maps Embed">
+              <i data-lucide="map"></i> <span>Embed API View</span>
+            </button>
+          </div>
+          <div class="pov-zoom-buttons">
+            <button id="povZoomOutBtn" class="pov-ctrl-btn" title="Zoom Out"><i data-lucide="zoom-out"></i></button>
+            <button id="povResetBtn" class="pov-ctrl-btn" title="Reset Pandangan"><i
+                data-lucide="rotate-ccw"></i></button>
+            <button id="povZoomInBtn" class="pov-ctrl-btn" title="Zoom In"><i data-lucide="zoom-in"></i></button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Speak Up Social Escalation Share Modal -->
+  <div id="speakUpModal" class="modal-overlay hidden">
+    <div class="speakup-modal-box">
+      <div class="speakup-modal-header">
+        <div class="flex items-center gap-2.5">
+          <div
+            class="w-9 h-9 rounded-xl bg-red-600/20 border border-red-500/40 flex items-center justify-center text-red-400">
+            <i data-lucide="megaphone" class="w-5 h-5"></i>
+          </div>
+          <div>
+            <h3 class="font-bold text-lg text-white">Eskalasi Suara Rakyat (Speak Up)</h3>
+            <p class="text-xs text-slate-400">Suara Anda menciptakan transparansi & akuntabilitas pemerintah!</p>
+          </div>
+        </div>
+        <button id="closeSpeakUpModalBtn" class="modal-close-btn"><i data-lucide="x"></i></button>
+      </div>
+
+      <!-- Generated Social Share Preview Card -->
+      <div class="share-card-preview" id="socialSharePreviewCard">
+        <div class="share-card-header">
+          <div class="flex items-center gap-2">
+            <span class="share-app-badge">SPEAKUP INDONESIA</span>
+            <span class="share-status-badge" id="shareCardSeverity">KRITIS</span>
+          </div>
+          <span class="share-date" id="shareCardDate">26 AGUSTUS 2026</span>
+        </div>
+
+        <div class="share-card-body">
+          <h4 id="shareCardTitle" class="share-title">Erupsi Gunung Merapi - Guguran Lava 3.000m</h4>
+          <p id="shareCardLocation" class="share-location"><i data-lucide="map-pin"
+              class="w-3.5 h-3.5 inline text-rose-400"></i> Kab. Magelang, Jawa Tengah</p>
+
+          <div class="share-metrics-box" id="shareCardMetrics">
+            <!-- Dynamic metric -->
+          </div>
+
+          <div class="share-govt-target">
+            <span class="target-label">Instansi Penanggung Jawab Terdekat:</span>
+            <span class="target-name" id="shareCardGovt">BPBD Kabupaten Magelang (3.2 km)</span>
+          </div>
+
+          <div class="share-hashtags">
+            #SpeakUpID #KawalBencana #SuaraRakyat #TransparansiPublik #IndonesiaTanggap
+          </div>
+        </div>
+
+        <div class="share-card-footer">
+          <div class="share-speakup-stat">
+            <i data-lucide="flame" class="text-amber-400"></i>
+            <span id="shareCardVotes">1.421 Warga Telah Bersuara</span>
+          </div>
+          <span class="share-url">speakup.id/bencana</span>
+        </div>
+      </div>
+
+      <!-- Social Media Direct Share Buttons -->
+      <div class="social-actions-grid">
+        <button id="shareTwitterBtn" class="social-btn twitter-btn">
+          <i data-lucide="twitter"></i>
+          <span>Bagikan ke X / Twitter</span>
+        </button>
+        <button id="shareWhatsAppBtn" class="social-btn whatsapp-btn">
+          <i data-lucide="message-circle"></i>
+          <span>Kirim ke WhatsApp Group</span>
+        </button>
+        <button id="copyShareLinkBtn" class="social-btn copy-btn">
+          <i data-lucide="copy" id="copyIcon"></i>
+          <span id="copyLinkText">Salin Tautan & Template Laporan</span>
+        </button>
+        <button id="downloadCardImageBtn" class="social-btn download-btn">
+          <i data-lucide="download"></i>
+          <span>Simpan Story Card (IG / TikTok)</span>
+        </button>
+      </div>
+
+      <div class="support-success-banner hidden" id="supportSuccessBanner">
+        <i data-lucide="check-circle-2" class="text-emerald-400 w-5 h-5"></i>
+        <span>Terima kasih! Suara Anda berhasil ditambahkan ke eskalasi titik ini.</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- AI Voice Assistant Modal / Overlay Panel -->
+  <div id="voiceAssistantModal" class="voice-assistant-overlay hidden">
+    <div class="voice-assistant-card">
+      <div class="voice-assistant-header">
+        <div class="flex items-center gap-3">
+          <div class="ai-avatar-core">
+            <div class="core-glow"></div>
+            <i data-lucide="bot" class="text-cyan-400 w-5 h-5"></i>
+          </div>
+          <div>
+            <h3 class="font-bold text-white text-base">Garuda AI — Asisten Suara SpeakUp</h3>
+            <span class="text-xs text-cyan-400 flex items-center gap-1">
+              <span class="w-2 h-2 rounded-full bg-cyan-400 animate-ping"></span> Siap Mendengarkan Bahasa Indonesia
+            </span>
+          </div>
+        </div>
+        <button id="closeVoiceAssistantBtn" class="modal-close-btn"><i data-lucide="x"></i></button>
+      </div>
+
+      <!-- Waveform Visualizer -->
+      <div class="voice-waveform-area">
+        <div class="audio-bars" id="audioVisualizerBars">
+          <span class="bar"></span><span class="bar"></span><span class="bar"></span>
+          <span class="bar"></span><span class="bar"></span><span class="bar"></span>
+          <span class="bar"></span><span class="bar"></span><span class="bar"></span>
+          <span class="bar"></span><span class="bar"></span><span class="bar"></span>
+        </div>
+        <div class="voice-status-text" id="voiceStatusText">Tekan mikrofon dan ucapkan perintah Anda...</div>
+      </div>
+
+      <!-- Live Transcript Dialogue Area -->
+      <div class="assistant-dialogue-box custom-scrollbar" id="assistantDialogueBox">
+        <div class="assistant-bubble bot">
+          Halo! Saya adalah Asisten Suara SpeakUp. Anda bisa meminta saya untuk menjelajahi bencana, mencari instansi
+          penanggung jawab, atau beralih ke prediksi masa depan.
+        </div>
+      </div>
+
+      <!-- Voice Trigger & Manual Input Area -->
+      <div class="voice-input-controls">
+        <button id="toggleMicRecordingBtn" class="mic-record-btn" title="Mulai / Berhenti Merekam Suara">
+          <i data-lucide="mic" id="micBtnIcon"></i>
+          <span id="micBtnLabel">Bicara Sekarang</span>
+        </button>
+
+        <div class="voice-text-fallback">
+          <input type="text" id="voiceTextInput"
+            placeholder="Atau ketik perintah di sini (contoh: 'Bawa ke Merapi')...">
+          <button id="sendVoiceTextBtn" class="send-btn"><i data-lucide="send"></i></button>
+        </div>
+      </div>
+
+      <!-- Example Voice Command Chips -->
+      <div class="voice-hints-bar">
+        <span class="hints-label">Coba ucapkan:</span>
+        <div class="command-chips-list">
+          <button class="cmd-chip" data-cmd="Bawa saya ke Erupsi Merapi">"Bawa saya ke Erupsi Merapi"</button>
+          <button class="cmd-chip" data-cmd="Tunjukkan lembaga terdekat">"Tunjukkan lembaga terdekat"</button>
+          <button class="cmd-chip" data-cmd="Buka POV">"Buka POV street view"</button>
+          <button class="cmd-chip" data-cmd="Tampilkan masalah stunting">"Tampilkan masalah stunting"</button>
+          <button class="cmd-chip" data-cmd="Ubah ke prediksi masa depan">"Ubah ke prediksi masa depan"</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Javascript Modules -->
+  <script src="js/data.js"></script>
+  <script src="js/audio.js"></script>
+  <script src="js/globe.js"></script>
+  <script src="js/povViewer.js"></script>
+  <script src="js/socialShare.js"></script>
+  <script src="js/voiceAssistant.js"></script>
+  <script src="js/app.js"></script>
+</body>
+
+</html>
